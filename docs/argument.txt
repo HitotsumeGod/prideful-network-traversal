@@ -1,0 +1,12 @@
+/* insert stuff about the appeal of P2P systems in general */
+
+PNT's greatest downside, its higher required computational power, is an issue with a necessarily
+bright future. It is unlikely that consumer-grade computers will require more than sixty-five thousand
+ports even moving into the future, since regardless of technological developments, the average
+computer-owner will not be attempting thousands of computations running on thousands of different services
+simultaneously. In contrast, the demand for improvements in computer hardware computing power has been nonstop
+in the last few decades, and its results have been staggering. It is, after all, more realistic to expect
+consumers to desire more speed for the few tasks they need to complete with their machines, rather than
+the capacity for more tasks. With this in mind, a computational-significant system such as PNT, whose efficiency
+relies on the ratio of SPEED:PORTS, will only improve in usability, as a computer's overall SPEED will always
+be increasing, in comparison to the already mostly satisfactory number of PORTS.
