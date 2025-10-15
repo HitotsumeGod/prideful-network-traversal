@@ -14,9 +14,9 @@ struct std_conn {
 	struct sockaddr_in	address;
 };
 
+extern bool acquired;
+
 extern struct errep *pnt_traverse(struct in_addr, char *secret, float delay, struct std_conn *results);
-extern struct errep *pnt_sendmsg(void *msg, size_t length, struct std_conn connection);
-extern struct errep *pnt_recvmsg(void *msg, size_t length, struct std_conn connection);
 extern void *pnt_keepalive(void *connection);
 
 #endif //__PNT_H___
