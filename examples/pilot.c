@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
 	struct errep *err;
 	struct in_addr addr;
-	struct std_conn conn;
+	struct std_conn *conn;
         dword secret;
 
 	if (argc == 1) {
@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
         }
         printf("Secret is %d\n", secret);
         return 0;
-	if ((err = pnt_traverse(addr, secret, &conn)) != NULL) {
+	if ((err = pnt_traverse_severain(addr, secret, &conn)) != NULL) {
 		fprintf(stderr, "%s", ptools_format_errors(err));
 		return -1;
 	}

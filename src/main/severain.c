@@ -2,53 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
 #include <time.h>
-#include <unistd.h>
 #include <errno.h>
 
-#define NANOSEC		1000000
-#define PNT_BINDPORT 	8668
-#define MAX_SECRET_LEN  24
-#define MIN_SECRET_LEN 	4
-#define MSG_LEN		32
-
-bool acquired = false;
-
-struct errep *pnt_mksecret(char *phrase, dword *res)
-{
-        struct errep *err;
-        char *fnname = "pnt_mksecret()";
-        const int mote = 1700;
-        dword secret, sum;
-
-        if (!phrase || !res) {
-                ERREP(err, fnname, "function was passed bad argument(s)");
-                return err;
-        }
-        if (strlen(phrase) < MIN_SECRET_LEN || strlen(phrase) > MAX_SECRET_LEN) {
-                ERREP(err, fnname, "secret phrase was either too short or too long");
-                return err;
-        }
-        secret = phrase[0] << 24;
-	secret |= (phrase[1] << 16);
-	secret |= (phrase[2] << 8);
-	secret |= phrase[3];
-	secret += mote;
-	for (int i = 0; i < strlen(phrase); i++)
-		sum += phrase[i];
-        // TODO figure out why xorring the secret with the sum causes variable output
-        // *res = secret ^ sum;
-        *res = secret;
-        return NULL;
-}
-
-struct errep *pnt_traverse(struct in_addr addr, dword secret, struct std_conn **res)
+struct errep *pnt_traverse_severain(struct in_addr addr, dword secret, struct std_conn **res)
 {
 	struct errep *err;
-	char *fnname = "pnt_traverse()";
+	char *fnname = "pnt_traverse_severain";
         struct std_conn *conn;
 	socket_t sock;
 	struct sockaddr_in tobind, reply, dest;
@@ -138,29 +98,4 @@ struct errep *pnt_traverse(struct in_addr addr, dword secret, struct std_conn **
 	}
 	free(buf);
         return NULL;
-}
-
-// suitable for passing to pthread_create
-void *pnt_keepalive(void *std_conn)
-{
-        struct errep *err;
-        char *fnname = "pnt_keepalive()";
-        struct timespec sleeptime;
-        struct std_conn *conn = (struct std_conn *) std_conn;
-
-        sleeptime.tv_sec = 4;
-	sleeptime.tv_nsec = 0;
-        while (1) {
-                if (nanosleep(&sleeptime, NULL) == -1) {
-                        ERREP(err, fnname, "error sleeping keepalive function");
-                        ptools_format_errors(err);
-                        return NULL;
-                }
-                if (sendto(conn -> socket, NULL, 0, 0, (struct sockaddr *) &conn -> address, sizeof(struct sockaddr))) {
-                        ERREP(err, fnname, "error sending keepalive message to peer");
-                        ptools_format_errors(err);
-                        return NULL;
-                }
-        }
-	return NULL;
 }
