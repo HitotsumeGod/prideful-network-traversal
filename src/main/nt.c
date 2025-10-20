@@ -14,48 +14,62 @@
 #define MAX_SECRET_LEN  24
 #define MIN_SECRET_LEN 	4
 #define MSG_LEN		32
-#define MOTE		1700
 
 bool acquired = false;
 
-struct errep *pnt_traverse(struct in_addr addr, char *pass, float millis, struct std_conn *res)
+struct errep *pnt_mksecret(char *phrase, dword *res)
+{
+        struct errep *err;
+        char *fnname = "pnt_mksecret()";
+        const int mote = 1700;
+        dword secret, sum;
+
+        if (!phrase || !res) {
+                ERREP(err, fnname, "function was passed bad argument(s)");
+                return err;
+        }
+        if (strlen(phrase) < MIN_SECRET_LEN || strlen(phrase) > MAX_SECRET_LEN) {
+                ERREP(err, fnname, "secret phrase was either too short or too long");
+                return err;
+        }
+        secret = phrase[0] << 24;
+	secret |= (phrase[1] << 16);
+	secret |= (phrase[2] << 8);
+	secret |= phrase[3];
+	secret += mote;
+	for (int i = 0; i < strlen(phrase); i++)
+		sum += phrase[i];
+        // TODO figure out why xorring the secret with the sum causes variable output
+        // *res = secret ^ sum;
+        *res = secret;
+        return NULL;
+}
+
+struct errep *pnt_traverse(struct in_addr addr, dword secret, struct std_conn **res)
 {
 	struct errep *err;
 	char *fnname = "pnt_traverse()";
+        struct std_conn *conn;
 	socket_t sock;
 	struct sockaddr_in tobind, reply, dest;
 	socklen_t siz = sizeof(struct sockaddr);
-	struct timespec sleeptime;
 	word portnum;
-	dword xorred, added;
 	char hi_msg[MSG_LEN], ack_msg[MSG_LEN], *buf;
 	#ifdef DEBUG
 		char tempbuf[24];
 	#endif
 
-        if (!pass || strlen(pass) < MIN_SECRET_LEN || strlen(pass) > MAX_SECRET_LEN) {
-                ERREP(err, fnname, "secret phrase was either NULL, too short, or too long");
+	acquired = false;
+        if ((conn = malloc(sizeof(struct std_conn))) == NULL) {
+                ERREP(err, fnname, "could not allocate memory for standard connection struct");
                 return err;
         }
-	acquired = false;
         if ((buf = malloc(sizeof(char) * MSG_LEN)) == NULL) {
                 ERREP(err, fnname, "could not allocate memory for buffer");
                 return err;
         }
-	sleeptime.tv_sec = 0;
-	sleeptime.tv_nsec = millis * NANOSEC;
-	//secret obfuscation
-	xorred = pass[0] << 24;
-	xorred |= (pass[1] << 16);
-	xorred |= (pass[2] << 8);
-	xorred |= pass[3];
-	xorred += MOTE;
-	for (int i = 0; i < strlen(pass); i++)
-		added += pass[i];
-	xorred ^= added;
-        snprintf(hi_msg, sizeof(hi_msg), "h%d", xorred);
-        snprintf(ack_msg, sizeof(ack_msg), "a%d", xorred);
-	//
+        snprintf(hi_msg, sizeof(hi_msg), "h%d", secret);
+        snprintf(ack_msg, sizeof(ack_msg), "a%d", secret);
 	memset(&tobind, 0, sizeof(struct sockaddr_in));
 	tobind.sin_family = AF_INET;
 	tobind.sin_port = htons(PNT_BINDPORT);
@@ -69,15 +83,11 @@ struct errep *pnt_traverse(struct in_addr addr, char *pass, float millis, struct
 		ERREP(err, fnname, "error binding our socket to the designated bindport");
 		return err;
 	}
-	//core connection-negotiation loop
-	//two passes SHOULD be enough to exchange hellos
+	// core connection-negotiation loop
+	// two passes SHOULD be enough to exchange hellos
 	for (int i = 0; i < 2; i++) {
 		portnum = 1024;
 		while (portnum) {
-			if (nanosleep(&sleeptime, NULL) == -1) {
-				ERREP(err, fnname, "error having a snooze");
-				return err;
-			}
 			dest.sin_port = htons(portnum++);
 			if (sendto(sock, hi_msg, sizeof(hi_msg), 0, (struct sockaddr *) &dest, siz) == -1) {
 				ERREP(err, fnname, "error sending hi message to our peer");
@@ -121,16 +131,16 @@ struct errep *pnt_traverse(struct in_addr addr, char *pass, float millis, struct
 		}
 	}
 	if (acquired) {
-		printf("%s\n", buf);
-		res -> socket = sock;
-        	memcpy(&res -> address, &reply, sizeof(res -> address));
+		printf("Received: %s\n", buf);
+		conn -> socket = sock;
+        	memcpy(&conn -> address, &reply, sizeof(struct sockaddr_in));
+                *res = conn;
 	}
 	free(buf);
-	ERREP(err, fnname, NULL);
-	return err;
+        return NULL;
 }
 
-//suitable for passing to pthread_create
+// suitable for passing to pthread_create
 void *pnt_keepalive(void *std_conn)
 {
         struct errep *err;
